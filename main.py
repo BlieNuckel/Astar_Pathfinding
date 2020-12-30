@@ -1,6 +1,11 @@
 from collections import defaultdict
 import math
-from typing import DefaultDict
+import heapq
+from numpy.core.records import array
+
+
+def board_constructor():
+    board = array([[]])
 
 
 def reconstruct_path(cameFrom, current):
@@ -11,14 +16,40 @@ def reconstruct_path(cameFrom, current):
     return total_path
 
 
-def a_star(start, goal, h):
-    openSet = {start}
-    cameFrom = {}
-    gscore = defaultdict(lambda: math.inf)
-    gscore[start] = 0
+def h(x, goal):
+    return math.sqrt(x ** 2 + goal)
 
-    fscore = defaultdict(lambda: math.inf)
-    fscore[start] = h(start)
+
+def d(current, neighbor):
     
+    
+
+def a_star(start, goal):
+    current = None
+    openSet = [start]
+    cameFrom = {}
+    gScore = defaultdict(lambda: math.inf)
+    gScore[start] = 0
+
+    fScore = defaultdict(lambda: math.inf)
+    fScore[start] = h(start)
+
     while len(openSet) is not 0:
-        current = 
+        for node in openSet:
+            if current is None or fScore[current] > fScore[node]:
+                current = node
+
+        if current == goal:
+            return reconstruct_path(cameFrom, current)
+
+        openSet.heappop(current)
+        for neighbor in current:
+            tentative_gScore = gScore[current] + d(current, neighbor)
+            if tentative_gScore < gScore[neighbor]:
+                cameFrom[neighbor] = current
+                gScore[neighbor] = tentative_gScore
+                fScore[neighbor] = gScore[neighbor] + h(neighbor, goal)
+                if neighbor not in openSet:
+                    openSet.heappush(neighbor)
+
+    return "failure"
