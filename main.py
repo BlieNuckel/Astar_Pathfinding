@@ -7,8 +7,7 @@ BOARD = np.arange(BOARD_DIM ** 2).reshape(10, 10)
 
 
 def main():
-    print(BOARD)
-    neighbor_finder(10)
+    a_star(10, 15)
 
 
 def reconstruct_path(cameFrom, current):
@@ -33,19 +32,25 @@ def neighbor_finder(current):
         np.where(BOARD == current)[1][0],
     )
 
-    print(current_coord)
-
     neighbor_coord = set()
-    other_neighbor_coord = set()
     for i in range(-1, 2):
-        other_neighbor_coord.add((current_coord[0] + i, current_coord[1] - 1))
-        other_neighbor_coord.add((current_coord[0] + i, current_coord[1]))
-        other_neighbor_coord.add((current_coord[0] + i, current_coord[1] + 1))
+        neighbor_coord.add((current_coord[0] + i, current_coord[1] - 1))
+        neighbor_coord.add((current_coord[0] + i, current_coord[1]))
+        neighbor_coord.add((current_coord[0] + i, current_coord[1] + 1))
+    neighbor_coord.remove(current_coord)
+
+    new_neighbor_coord = set()
+    for i in neighbor_coord:
+        if i[0] != -1 and i[1] != -1 and i[0] != 10 and i[1] != 10:
+            new_neighbor_coord.add(i)
+
+    return new_neighbor_coord
 
 
 def a_star(start, goal):
     current = None
-    openSet = {start}
+    openSet = set()
+    openSet.add(start)
     cameFrom = {}
     gScore = defaultdict(lambda: math.inf)
     gScore[start] = 0
@@ -61,21 +66,23 @@ def a_star(start, goal):
         if current == goal:
             return reconstruct_path(cameFrom, current)
 
-        openSet.remove(current)
+        openSet.discard(current)
         neighbors = neighbor_finder(current)
 
         for neighbor in neighbors:
-            if neighbor < 0 or neighbor > 99:
-                neighbors.remove(neighbor)
-            tentative_gScore = gScore[current] + h(current, neighbor)
+            tentative_gScore = gScore[current] + h(
+                current, BOARD[neighbor[0]][neighbor[1]]
+            )
             if tentative_gScore < gScore[neighbor]:
                 cameFrom[neighbor] = current
                 gScore[neighbor] = tentative_gScore
-                fScore[neighbor] = gScore[neighbor] + h(neighbor, goal)
+                fScore[neighbor] = gScore[neighbor] + h(
+                    BOARD[neighbor[0]][neighbor[1]], goal
+                )
                 if neighbor not in openSet:
                     openSet.add(neighbor)
 
-    return "failure"
+    return print("failure")
 
 
 if __name__ == "__main__":
