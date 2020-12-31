@@ -2,19 +2,20 @@ from collections import defaultdict
 import math
 import numpy as np
 
-BOARD_DIM = 10
-BOARD = np.arange(BOARD_DIM ** 2).reshape(10, 10)
+BOARD_DIM = 100
+BOARD = np.arange(BOARD_DIM ** 2).reshape(BOARD_DIM, BOARD_DIM)
 
 
 def main():
-    a_star(10, 15)
+    print(BOARD)
+    print(a_star(0, 9999))
 
 
 def reconstruct_path(cameFrom, current):
-    total_path = current
+    total_path = [current]
     while current in cameFrom.keys():
         current = cameFrom[current]
-        total_path.prepend(current)
+        total_path.insert(0, current)
     return total_path
 
 
@@ -41,17 +42,20 @@ def neighbor_finder(current):
 
     new_neighbor_coord = set()
     for i in neighbor_coord:
-        if i[0] != -1 and i[1] != -1 and i[0] != 10 and i[1] != 10:
+        if (
+            i[0] != -1
+            and i[1] != -1
+            and i[0] != BOARD_DIM
+            and i[1] != BOARD_DIM
+        ):
             new_neighbor_coord.add(i)
 
     return new_neighbor_coord
 
 
 def a_star(start, goal):
-    current = None
     openSet = set()
     openSet.add(start)
-    print(openSet)
     cameFrom = {}
     gScore = defaultdict(lambda: math.inf)
     gScore[start] = 0
@@ -60,35 +64,22 @@ def a_star(start, goal):
     fScore[start] = h(start, goal)
 
     while len(openSet) != 0:
-        for node in openSet:
-            print("line 63", node)
-            if current is None or fScore[current] > fScore[node]:
-                print("line 66")
-                current = node
+        current = min(openSet)
 
         if current == goal:
-            print("line 68")
             return reconstruct_path(cameFrom, current)
 
         openSet.discard(current)
         neighbors = neighbor_finder(current)
 
-        for neighbor in neighbors:
-            print("line 75")
-            tentative_gScore = gScore[current] + h(
-                current, BOARD[neighbor[0]][neighbor[1]]
-            )
-            print(tentative_gScore)
-            print(gScore[neighbor])
+        for neighbor_coord in neighbors:
+            neighbor = BOARD[neighbor_coord[0]][neighbor_coord[1]]
+            tentative_gScore = gScore[current] + h(current, neighbor)
             if tentative_gScore < gScore[neighbor]:
-                print("line 80")
                 cameFrom[neighbor] = current
                 gScore[neighbor] = tentative_gScore
-                fScore[neighbor] = gScore[neighbor] + h(
-                    BOARD[neighbor[0]][neighbor[1]], goal
-                )
+                fScore[neighbor] = gScore[neighbor] + h(neighbor, goal)
                 if neighbor not in openSet:
-                    print("line 87")
                     openSet.add(neighbor)
 
     return print("failure")
