@@ -51,6 +51,7 @@ def a_star(start, goal):
     current = None
     openSet = set()
     openSet.add(start)
+    print(openSet)
     cameFrom = {}
     gScore = defaultdict(lambda: math.inf)
     gScore[start] = 0
@@ -60,26 +61,34 @@ def a_star(start, goal):
 
     while len(openSet) != 0:
         for node in openSet:
+            print("line 63", node)
             if current is None or fScore[current] > fScore[node]:
+                print("line 66")
                 current = node
 
         if current == goal:
+            print("line 68")
             return reconstruct_path(cameFrom, current)
 
         openSet.discard(current)
         neighbors = neighbor_finder(current)
 
         for neighbor in neighbors:
+            print("line 75")
             tentative_gScore = gScore[current] + h(
                 current, BOARD[neighbor[0]][neighbor[1]]
             )
+            print(tentative_gScore)
+            print(gScore[neighbor])
             if tentative_gScore < gScore[neighbor]:
+                print("line 80")
                 cameFrom[neighbor] = current
                 gScore[neighbor] = tentative_gScore
                 fScore[neighbor] = gScore[neighbor] + h(
                     BOARD[neighbor[0]][neighbor[1]], goal
                 )
                 if neighbor not in openSet:
+                    print("line 87")
                     openSet.add(neighbor)
 
     return print("failure")
