@@ -2,13 +2,13 @@ from collections import defaultdict
 import math
 import numpy as np
 
-BOARD_DIM = 100
+BOARD_DIM = 10
 BOARD = np.arange(BOARD_DIM ** 2).reshape(BOARD_DIM, BOARD_DIM)
 
 
 def main():
     print(BOARD)
-    print(a_star(0, 9999))
+    print(a_star(0, 99))
 
 
 def reconstruct_path(cameFrom, current):
@@ -54,6 +54,7 @@ def neighbor_finder(current):
 
 
 def a_star(start, goal):
+    current = None
     openSet = set()
     openSet.add(start)
     cameFrom = {}
@@ -64,7 +65,15 @@ def a_star(start, goal):
     fScore[start] = h(start, goal)
 
     while len(openSet) != 0:
-        current = min(openSet)
+
+        for i in openSet:
+            temp_current = math.inf
+            if current is None:
+                current = start
+                break
+            if fScore[i] < fScore[temp_current]:
+                temp_current = i
+                current = i
 
         if current == goal:
             return reconstruct_path(cameFrom, current)
