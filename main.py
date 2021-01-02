@@ -1,27 +1,32 @@
 from collections import defaultdict
 import math
+import sys
 import numpy as np
 import pygame as pg
-from pygame.constants import K_SPACE, K_c
-from threading import Thread
-from time import sleep
+from pygame.constants import K_1, K_2, K_3, K_SPACE, K_c
+from pygame.time import Clock
 
 pg.init()
 
-BLACK = (0, 0, 0)
+BLACK = (0, 0, 0, 255)
 DARK_GREY = (46, 46, 46)
 LIGHT_GREY = (87, 87, 87)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+LIGHT_BLUE = (65, 125, 230)
 
+BRUSH_SIZE = 1
 SCREEN_SIZE = 700
-SIZE = (SCREEN_SIZE, SCREEN_SIZE)
-SCREEN = pg.display.set_mode(SIZE)
-BOARD_DIM = 25
-SQUARE_SIZE = SCREEN_SIZE / BOARD_DIM
+SCREEN = pg.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+BOARD_DIM = 100
+MARGIN = 250 / BOARD_DIM
+SQUARE_SIZE = (SCREEN_SIZE + MARGIN) / BOARD_DIM
 BOARD = np.arange(BOARD_DIM ** 2).reshape(BOARD_DIM, BOARD_DIM)
+
+START = (0, 0)
+GOAL = (BOARD_DIM - 1, BOARD_DIM - 1)
 
 
 def main():
@@ -29,15 +34,15 @@ def main():
 
 
 def launch():
+    BRUSH_SIZE = 1
     carryOn = True
     clock = pg.time.Clock()
     pg.display.set_caption("AAAAASS")
     path_list = []
     wall_list = []
-    while carryOn:
 
-        start = (0, 0)
-        goal = (BOARD_DIM - 1, BOARD_DIM - 1)
+    grid_constructor()
+    while carryOn:
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -47,20 +52,32 @@ def launch():
                 pos = pg.mouse.get_pos()
                 column = int(pos[0] // SQUARE_SIZE)
                 row = int(pos[1] // SQUARE_SIZE)
-                wall_list.append((row, column))
+                if BRUSH_SIZE == 1:
+                    if (row, column) != START and (row, column) != GOAL:
+                        wall_list.append((row, column))
+                else:
+                    brush_function(wall_list, (row, column), BRUSH_SIZE, False)
+                wall_drawer(wall_list)
 
             elif pg.mouse.get_pressed()[2]:
                 pos = pg.mouse.get_pos()
                 column = int(pos[0] // SQUARE_SIZE)
                 row = int(pos[1] // SQUARE_SIZE)
-                try:
-                    wall_list.remove((row, column))
-                except ValueError:
-                    pass
+                if BRUSH_SIZE == 1:
+                    if (row, column) in wall_list:
+                        wall_list.remove((row, column))
+                        specific_box_color((row, column), WHITE)
+                else:
+                    brush_function(wall_list, (row, column), BRUSH_SIZE, True)
+                wall_drawer(wall_list)
 
             elif event.type == pg.KEYDOWN:
                 if event.key == K_SPACE:
-                    path_list = a_star(wall_list, start, goal)
+                    path_list = a_star(wall_list)
+                    wall_list = []
+                    grid_constructor()
+                    for i in path_list:
+                        specific_box_color(i, BLUE)
                     if path_list == "failure":
                         print(path_list)
                         path_list = []
@@ -68,51 +85,82 @@ def launch():
                         continue
                 elif event.key == K_c:
                     wall_list = []
+                    grid_constructor()
                     continue
-
-        grid_constructor(wall_list, path_list, start, goal)
+                elif event.key == K_1:
+                    BRUSH_SIZE = 1
+                elif event.key == K_2:
+                    BRUSH_SIZE = 3
+                elif event.key == K_3:
+                    BRUSH_SIZE = 5
 
         pg.display.flip()
-        clock.tick(120)
+        clock.tick()
 
     pg.quit()
 
 
-def grid_constructor(wall_list, path_list, start, goal):
-    if BOARD_DIM % 2 == 0:
-        box_color(BOARD_DIM, wall_list, path_list, start, goal)
-    else:
-        box_color(BOARD_DIM + 1, wall_list, path_list, start, goal)
-
-
-def box_color(second_range, wall_list, path_list, start, goal):
-    cnt = 0
-    for i in range(BOARD_DIM + 1):
-        for j in range(second_range):
-            if (i, j) in wall_list:
-                color = BLACK
-            elif (i, j) == start:
-                color = RED
-            elif (i, j) == goal:
+def grid_constructor():
+    for i in range(BOARD_DIM):
+        for j in range(BOARD_DIM):
+            if (i, j) == START:
                 color = GREEN
-            elif (i, j) in path_list:
-                color = BLUE
-            elif cnt % 2 == 0:
-                color = DARK_GREY
+            elif (i, j) == GOAL:
+                color = RED
             else:
-                color = LIGHT_GREY
+                color = WHITE
+
             pg.draw.rect(
                 SCREEN,
                 color,
                 [
                     SQUARE_SIZE * j,
                     SQUARE_SIZE * i,
-                    SQUARE_SIZE,
-                    SQUARE_SIZE,
+                    SQUARE_SIZE - MARGIN,
+                    SQUARE_SIZE - MARGIN,
                 ],
             )
-            cnt += 1
-        cnt -= 1
+
+
+def wall_drawer(wall_list):
+    for coord in wall_list:
+        specific_box_color((coord[0], coord[1]), BLACK)
+
+
+def specific_box_color(coord, color):
+    pg.draw.rect(
+        SCREEN,
+        color,
+        [
+            SQUARE_SIZE * coord[1],
+            SQUARE_SIZE * coord[0],
+            SQUARE_SIZE - MARGIN,
+            SQUARE_SIZE - MARGIN,
+        ],
+    )
+
+
+def brush_function(wall_list, current, size, delete):
+    if not delete:
+        for i in range(-(size // 2), (size // 2) + 1):
+            for j in range(-(size // 2), (size // 2) + 1):
+                if (current[0] + i, current[1] + j) != START and (
+                    current[0] + i,
+                    current[1] + j,
+                ) != GOAL:
+                    wall_list.append((current[0] + i, current[1] + j))
+    else:
+        for i in range(-(size // 2), (size // 2) + 1):
+            for j in range(-(size // 2), (size // 2) + 1):
+                if (current[0] + i, current[1] + j) in wall_list:
+                    if (current[0] + i, current[1] + j) != START and (
+                        current[0] + i,
+                        current[1] + j,
+                    ) != GOAL:
+                        wall_list.remove((current[0] + i, current[1] + j))
+                        specific_box_color(
+                            (current[0] + i, current[1] + j), WHITE
+                        )
 
 
 # --------------------------------------------------------------------------- #
@@ -128,9 +176,9 @@ def reconstruct_path(cameFrom, current):
     return total_path
 
 
-def h(x, goal):
-    height = abs(goal[0] - x[0])
-    length = abs(goal[1] - x[1])
+def h(x, y):
+    height = abs(y[0] - x[0])
+    length = abs(y[1] - x[1])
     return math.sqrt(height ** 2 + length ** 2)
 
 
@@ -157,43 +205,59 @@ def neighbor_finder(wall_list, current):
     for i in new_neighbor_coord:
         if i not in wall_list:
             neighbor_coord.add(i)
+            specific_box_color(i, GREEN)
+            pg.display.flip()
+            pg.time.Clock().tick()
 
     return neighbor_coord
 
 
-def a_star(wall_list, start, goal):
+def event_handler():
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            sys.exit()
+
+
+def a_star(wall_list):
     current = ()
     openSet = set()
-    openSet.add(start)
+    openSet.add(START)
     cameFrom = {}
     gScore = defaultdict(lambda: math.inf)
-    gScore[start] = 0
+    gScore[START] = 0
 
     fScore = defaultdict(lambda: math.inf)
-    fScore[start] = h(start, goal)
+    fScore[START] = h(START, GOAL)
 
     while len(openSet) != 0:
+        event_handler()
         temp_current = -1
         for i in openSet:
             if current is None:
-                current = start
+                current = START
                 break
             if fScore[i] < fScore[temp_current]:
                 temp_current = i
                 current = i
 
-        if current == goal:
+        if current == GOAL:
             return reconstruct_path(cameFrom, current)
 
         openSet.discard(current)
+        grid_constructor()
+        wall_drawer(wall_list)
+        for i in openSet:
+            specific_box_color(i, LIGHT_BLUE)
         neighbors = neighbor_finder(wall_list, current)
+        pg.display.flip()
+        pg.time.Clock().tick()
 
         for neighbor in neighbors:
             tentative_gScore = gScore[current] + h(current, neighbor)
             if tentative_gScore < gScore[neighbor]:
                 cameFrom[neighbor] = current
                 gScore[neighbor] = tentative_gScore
-                fScore[neighbor] = gScore[neighbor] + h(neighbor, goal)
+                fScore[neighbor] = gScore[neighbor] + h(neighbor, GOAL)
                 if neighbor not in openSet:
                     openSet.add(neighbor)
 
