@@ -2,6 +2,9 @@ from collections import defaultdict
 import math
 import numpy as np
 import pygame as pg
+from pygame.constants import K_SPACE, K_c
+from threading import Thread
+from time import sleep
 
 pg.init()
 
@@ -16,15 +19,12 @@ BLUE = (0, 0, 255)
 SCREEN_SIZE = 700
 SIZE = (SCREEN_SIZE, SCREEN_SIZE)
 SCREEN = pg.display.set_mode(SIZE)
-BOARD_DIM = 10
+BOARD_DIM = 25
 SQUARE_SIZE = SCREEN_SIZE / BOARD_DIM
 BOARD = np.arange(BOARD_DIM ** 2).reshape(BOARD_DIM, BOARD_DIM)
-WALL_SET = {1, 2, 3, 6, 7, 8, 12, 13, 18}
 
 
 def main():
-    print(BOARD)
-    print(a_star(0, 4))
     launch()
 
 
@@ -32,19 +32,45 @@ def launch():
     carryOn = True
     clock = pg.time.Clock()
     pg.display.set_caption("AAAAASS")
-
+    path_list = []
+    wall_list = []
     while carryOn:
+
+        start = (0, 0)
+        goal = (BOARD_DIM - 1, BOARD_DIM - 1)
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 carryOn = False
-            elif event.type == pg.MOUSEBUTTONDOWN:
-                pos = pg.mouse.get_pos()
-                column = int((pos[0] // SQUARE_SIZE) - 1)
-                row = int((pos[1] // SQUARE_SIZE) - 1)
-                BOARD[row][column] = -1
 
-        grid_constructor()
+            elif pg.mouse.get_pressed()[0]:
+                pos = pg.mouse.get_pos()
+                column = int(pos[0] // SQUARE_SIZE)
+                row = int(pos[1] // SQUARE_SIZE)
+                wall_list.append((row, column))
+
+            elif pg.mouse.get_pressed()[2]:
+                pos = pg.mouse.get_pos()
+                column = int(pos[0] // SQUARE_SIZE)
+                row = int(pos[1] // SQUARE_SIZE)
+                try:
+                    wall_list.remove((row, column))
+                except ValueError:
+                    pass
+
+            elif event.type == pg.KEYDOWN:
+                if event.key == K_SPACE:
+                    path_list = a_star(wall_list, start, goal)
+                    if path_list == "failure":
+                        print(path_list)
+                        path_list = []
+                        wall_list = []
+                        continue
+                elif event.key == K_c:
+                    wall_list = []
+                    continue
+
+        grid_constructor(wall_list, path_list, start, goal)
 
         pg.display.flip()
         clock.tick(120)
@@ -52,11 +78,46 @@ def launch():
     pg.quit()
 
 
-def grid_constructor():
+def grid_constructor(wall_list, path_list, start, goal):
     if BOARD_DIM % 2 == 0:
-        box_color(BOARD_DIM)
+        box_color(BOARD_DIM, wall_list, path_list, start, goal)
     else:
-        box_color(BOARD_DIM + 1)
+        box_color(BOARD_DIM + 1, wall_list, path_list, start, goal)
+
+
+def box_color(second_range, wall_list, path_list, start, goal):
+    cnt = 0
+    for i in range(BOARD_DIM + 1):
+        for j in range(second_range):
+            if (i, j) in wall_list:
+                color = BLACK
+            elif (i, j) == start:
+                color = RED
+            elif (i, j) == goal:
+                color = GREEN
+            elif (i, j) in path_list:
+                color = BLUE
+            elif cnt % 2 == 0:
+                color = DARK_GREY
+            else:
+                color = LIGHT_GREY
+            pg.draw.rect(
+                SCREEN,
+                color,
+                [
+                    SQUARE_SIZE * j,
+                    SQUARE_SIZE * i,
+                    SQUARE_SIZE,
+                    SQUARE_SIZE,
+                ],
+            )
+            cnt += 1
+        cnt -= 1
+
+
+# --------------------------------------------------------------------------- #
+#                                    LOGIC                                    #
+# --------------------------------------------------------------------------- #
 
 
 def reconstruct_path(cameFrom, current):
@@ -68,25 +129,19 @@ def reconstruct_path(cameFrom, current):
 
 
 def h(x, goal):
-    x_coord = (np.where(BOARD == x)[0][0], np.where(BOARD == x)[1][0])
-    goal_coord = (np.where(BOARD == goal)[0][0], np.where(BOARD == goal)[1][0])
-    height = abs(goal_coord[0] - x_coord[0])
-    length = abs(goal_coord[1] - x_coord[1])
+    height = abs(goal[0] - x[0])
+    length = abs(goal[1] - x[1])
     return math.sqrt(height ** 2 + length ** 2)
 
 
-def neighbor_finder(current):
-    current_coord = (
-        np.where(BOARD == current)[0][0],
-        np.where(BOARD == current)[1][0],
-    )
+def neighbor_finder(wall_list, current):
 
     neighbor_coord = set()
     for i in range(-1, 2):
-        neighbor_coord.add((current_coord[0] + i, current_coord[1] - 1))
-        neighbor_coord.add((current_coord[0] + i, current_coord[1]))
-        neighbor_coord.add((current_coord[0] + i, current_coord[1] + 1))
-    neighbor_coord.remove(current_coord)
+        neighbor_coord.add((current[0] + i, current[1] - 1))
+        neighbor_coord.add((current[0] + i, current[1]))
+        neighbor_coord.add((current[0] + i, current[1] + 1))
+    neighbor_coord.remove(current)
 
     new_neighbor_coord = set()
     for i in neighbor_coord:
@@ -100,16 +155,14 @@ def neighbor_finder(current):
 
     neighbor_coord = set()
     for i in new_neighbor_coord:
-        if BOARD[i[0]][i[1]] != -1:
+        if i not in wall_list:
             neighbor_coord.add(i)
 
     return neighbor_coord
 
 
-def a_star(start, goal):
-    np.where(BOARD == start) = -2
-    np.where(BOARD == goal) = -3
-    current = None
+def a_star(wall_list, start, goal):
+    current = ()
     openSet = set()
     openSet.add(start)
     cameFrom = {}
@@ -133,10 +186,9 @@ def a_star(start, goal):
             return reconstruct_path(cameFrom, current)
 
         openSet.discard(current)
-        neighbors = neighbor_finder(current)
+        neighbors = neighbor_finder(wall_list, current)
 
-        for neighbor_coord in neighbors:
-            neighbor = BOARD[neighbor_coord[0]][neighbor_coord[1]]
+        for neighbor in neighbors:
             tentative_gScore = gScore[current] + h(current, neighbor)
             if tentative_gScore < gScore[neighbor]:
                 cameFrom[neighbor] = current
@@ -146,62 +198,6 @@ def a_star(start, goal):
                     openSet.add(neighbor)
 
     return "failure"
-
-
-def wall_adder(num_set):
-    for i in num_set:
-        coord = (np.where(BOARD == i)[0][0], np.where(BOARD == i)[1][0])
-        BOARD[coord[0]][coord[1]] = -1
-
-
-def box_color(second_range):
-    cnt = 0
-    for i in range(BOARD_DIM + 1):
-        for j in range(second_range):
-            if BOARD[i - 1][j - 1] == -1:
-                color = BLACK
-                pg.draw.rect(
-                    SCREEN,
-                    BLACK,
-                    [
-                        SQUARE_SIZE * j,
-                        SQUARE_SIZE * i,
-                        SQUARE_SIZE,
-                        SQUARE_SIZE,
-                    ],
-                )
-            elif BOARD[i - 1][j - 1] == -2:
-                color = RED
-            elif BOARD[i - 1][j - 1] == -3:
-                color = GREEN   
-            elif cnt % 2 == 0:
-                color = DARK_GREY
-                pg.draw.rect(
-                    SCREEN,
-                    DARK_GREY,
-                    [
-                        SQUARE_SIZE * j,
-                        SQUARE_SIZE * i,
-                        SQUARE_SIZE,
-                        SQUARE_SIZE,
-                    ],
-                )
-            else:
-                color = LIGHT_GREY
-                pg.draw.rect(
-                    
-                    SCREEN,
-                    LIGHT_GREY,
-                    [
-                        SQUARE_SIZE * j,
-                        SQUARE_SIZE * i,
-                        SQUARE_SIZE,
-                        SQUARE_SIZE,
-                    ],
-                )
-        
-            cnt += 1
-        cnt -= 1
 
 
 if __name__ == "__main__":
