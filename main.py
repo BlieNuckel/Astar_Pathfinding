@@ -4,7 +4,6 @@ import sys
 import numpy as np
 import pygame as pg
 from pygame.constants import K_1, K_2, K_3, K_SPACE, K_c
-from pygame.time import Clock
 
 pg.init()
 
@@ -20,7 +19,7 @@ LIGHT_BLUE = (65, 125, 230)
 BRUSH_SIZE = 1
 SCREEN_SIZE = 700
 SCREEN = pg.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-BOARD_DIM = 100
+BOARD_DIM = 50
 MARGIN = 250 / BOARD_DIM
 SQUARE_SIZE = (SCREEN_SIZE + MARGIN) / BOARD_DIM
 BOARD = np.arange(BOARD_DIM ** 2).reshape(BOARD_DIM, BOARD_DIM)
