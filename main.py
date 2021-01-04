@@ -73,8 +73,8 @@ def launch():
             elif event.type == pg.KEYDOWN:
                 if event.key == K_SPACE:
                     path_list = a_star(wall_list)
-                    wall_list = []
                     grid_constructor()
+                    wall_drawer(wall_list)
                     for i in path_list:
                         specific_box_color(i, BLUE)
                     if path_list == "failure":
