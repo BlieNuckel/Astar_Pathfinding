@@ -36,7 +36,7 @@ def launch():
     BRUSH_SIZE = 1
     carryOn = True
     clock = pg.time.Clock()
-    pg.display.set_caption("AAAAASS")
+    pg.display.set_caption("A* Pathfinding")
     path_list = []
     wall_list = []
 
